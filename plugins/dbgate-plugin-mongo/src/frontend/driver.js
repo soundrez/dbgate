@@ -95,16 +95,18 @@ const driver = {
           ...update.fields,
         })});\n`;
       } else {
+        const updateCommand = {
+          "$set": _pickBy(update.fields, (v, k) => v !== undefined),
+        }
+        const unsetPairs = Object.keys(update.fields)
+          .filter((k) => update.fields[k]?.$$undefined$$)
+          .map((k) => [k, '']);
+        if (unsetPairs.length > 0) {
+          updateCommand["$unset"] = _.fromPairs(unsetPairs);
+        }
         res += `db.${update.pureName}.updateOne(${jsonStringifyWithObjectId(
           update.condition
-        )}, ${jsonStringifyWithObjectId({
-          $set: _pickBy(update.fields, (v, k) => v !== undefined),
-          $unset: _fromPairs(
-            Object.keys(update.fields)
-              .filter((k) => update.fields[k] === undefined)
-              .map((k) => [k, ''])
-          ),
-        })});\n`;
+        )}, ${jsonStringifyWithObjectId(updateCommand)});\n`;
       }
     }
     for (const del of changeSet.deletes) {
